@@ -46,3 +46,9 @@ report.xml
 fastlane/ouput
 /fastlane/ouput
 /fastlane/ouput/
+
+
+# Xcode project files (if using XcodeGen)
+*.xcworkspace/
+*.xcuserstate
+*.xcuserdata/
