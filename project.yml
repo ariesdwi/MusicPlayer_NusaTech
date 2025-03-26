@@ -1,91 +1,68 @@
-############
-## Project 
-############
 name: MusicPlayer_Nusatech
-
-############
-## Options
-############
-## In this part we will override some project properties
-
 options:
-  # Select the minimum xcodegen version that could generate this project
   minimumXcodeGenVersion: 2.10
-
-  # Create empty directories in the final project too
   generateEmptyDirectories: true
-
-  # Select deployment target. In this particular case will be use iOS, but
-  # we include the example to define it to watchOS, tvOS or macOS
   deploymentTarget:
     iOS: "15.0"
-    # watchOS: "6.0"
-    # tvOS: "15.0"
-    # macOS: "11.0"
-
-#############
-## Settings
-#############
 
 settings:
-  # Following properties will be override properties that you could find
-  # into Build settings directory. We will rewrite some for all default variants
-  # created by default for xcodegen, Debug and Release.
   IPHONEOS_DEPLOYMENT_TARGET: "15.0"
   MARKETING_VERSION: "1.3.3"
   CURRENT_PROJECT_VERSION: "14"
 
-############
-## Packages
-############
-
-# Now, we define the Swift package manager libraries that we will use
 packages:
   Alamofire:
     url: https://github.com/Alamofire/Alamofire.git
     minorVersion: 5.2.2
-  Lottie:
-    url: https://github.com/airbnb/lottie-spm.git
-    minorVersion: 4.1.2
-  Factory:
-    url: https://github.com/hmlongco/Factory
-    minorVersion: 2.0.0
-
-############
-## Targets
-############
-
-# Finally we will create our targets. Rememeber we have three of them:
-# - A core package (that will depends on Alamofire)
-# - A test target for this core package
-# - An app target
 
 targets:
+  MusicPlayer_Nusatech:
+    type: application
+    platform: iOS
+    deploymentTarget: 15.0
+    sources:
+      - path: app/sources
+        group: app
+      - path: app/resources
+        group: app
+      - path: app/Info.plist
+        group: app
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: "com.musicplayer.nusatech"
+      INFOPLIST_FILE: app/Info.plist
+      MARKETING_VERSION: 1.3.3
+      GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Core
+    entitlements:
+      path: app/Debug.entitlements
+      properties:
+        com.apple.security.application-groups: group.com.musicplayer
 
-  # Name for our main core package
+  MusicPlayerTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [MusicPlayerTests]
+    dependencies:
+      - target: MusicPlayer_Nusatech
+    settings:
+      base:
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/MusicPlayer_Nusatech.app/MusicPlayer_Nusatech"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
   Core:
-    type: framework # this package its a framework
-    platform: iOS   # for iOS only
-    # configure bundle and info.plist
+    type: framework
+    platform: iOS
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: "com.musicplayer.nusatech.core"
       INFOPLIST_FILE: core/Info.plist
-
-    # Where my sources are. Support wildcards and "exclude" options.
-    # we use path and group keys to generate a refence folder name "core"
-    # where all files related with Core (including tests) will be added
     sources:
       - path: core/sources
         group: core
       - path: core/resources
         group: core
-        
-    # Set our dependencies from external libraries
     dependencies:
       - package: Alamofire
-      - package: Factory
-
-    # Link with its target to run with cmd+u
     scheme:
       gatherCoverageData: true
       testTargets:
@@ -93,7 +70,6 @@ targets:
           parallelizable: true
           randomExecutionOrder: true
 
-  # Name for our test core package
   Core_Tests:
     type: bundle.unit-test
     platform: iOS
@@ -102,12 +78,8 @@ targets:
     sources:
       - path: core/tests
         group: core
-
-    # Link with Core target
     dependencies:
       - target: Core
-      
-    # Create a new scheme that will be linked and configured for test purposes 
     scheme:
       gatherCoverageData: true
       testTargets:
@@ -115,34 +87,4 @@ targets:
           parallelizable: true
           randomExecutionOrder: true
 
-  # Name for our app target
-  MusicPlayer_Nusatech:
-    # choose application as a type. There a so many types to select here (framework, extensions ...)
-    type: application 
-    # choose destination platform
-    platform: iOS
-    deploymentTarget: 15.0
-    sources:
-      # Where app files will be found. Remember you could use patterns and exclusions too!
-      - path: app/sources
-        group: app
-      - path: app/resources
-        group: app
-      - path: app/Info.plist
-        group: app
-    settings:
-      # Select the bundle identifier
-      PRODUCT_BUNDLE_IDENTIFIER: "com.musicplayer.nusatech"
-      # Select where Info.plist will be found
-      INFOPLIST_FILE: app/Info.plist
-      MARKETING_VERSION: 1.3.3
-      GENERATE_INFOPLIST_FILE: YES 
-    dependencies:
-      # Dependencies from SPM (lottie and factory) and local (Core)
-      - package: Lottie
-      - package: Factory
-      - target: Core
-    entitlements:
-      path: app/Debug.entitlements
-      properties:
-        com.apple.security.application-groups: group.com.musicplayer
+  

@@ -48,7 +48,7 @@ class LaunchScreenViewController: UIViewController {
     }
 
     private func navigateToMainApp() {
-        let mainVC = FeedViewController()
+        let mainVC = SongViewController()
         mainVC.modalTransitionStyle = .crossDissolve
         mainVC.modalPresentationStyle = .fullScreen
         self.present(mainVC, animated: true)
