@@ -46,9 +46,28 @@ public final class APIClient: NetworkService {
 
 
 // MARK: - Network Error Mapping (SRP)
+//public struct NetworkErrorMapper {
+//    static func map(_ error: AFError) -> NetworkError {
+//        return NetworkError.fromAFError(error)
+//    }
+//}
+
 public struct NetworkErrorMapper {
     static func map(_ error: AFError) -> NetworkError {
-        return NetworkError.fromAFError(error)
+        switch error {
+        case .invalidURL:
+            return .invalidURL
+        case .sessionTaskFailed:
+            return .invalidRequest // ✅ Map sessionTaskFailed to invalidRequest
+        case .responseValidationFailed(let reason):
+            if case .unacceptableStatusCode(let code) = reason {
+                return .invalidResponse(statusCode: code)
+            }
+            return .requestFailed(description: error.localizedDescription)
+        default:
+            return .unknown(error)
+        }
     }
 }
+
 

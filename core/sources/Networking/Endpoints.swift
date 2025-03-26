@@ -49,10 +49,21 @@ public struct APIEndpoint: Endpoint {
 public struct RequestBuilder {
     public static func createURL(baseURL: String, path: String, parameters: [String: String]) -> URL? {
         var components = URLComponents(string: baseURL + path)
-        components?.queryItems = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
+
+        // Define a manual order, ensuring "term" comes first
+        let orderedKeys = ["term", "entity", "limit", "offset"]
+        
+        let sortedQueryItems = orderedKeys.compactMap { key in
+            parameters[key].map { URLQueryItem(name: key, value: $0) }
+        }
+        
+        components?.queryItems = sortedQueryItems
         return components?.url
     }
 }
+
+
+
 
 // MARK: - Music API Endpoints
 public enum MusicAPI {

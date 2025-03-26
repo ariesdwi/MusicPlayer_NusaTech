@@ -67,26 +67,22 @@ targets:
     scheme:
       gatherCoverageData: true
       testTargets:
-        - name: Core_Tests
+        - name: CoreTests
           parallelizable: true
           randomExecutionOrder: true
 
-  Core_Tests:
+  CoreTests:
     type: bundle.unit-test
     platform: iOS
     settings:
       INFOPLIST_FILE: core/CoreTests-Info.plist
     sources:
-      - path: core/tests
+      - path: core/Tests
         group: core
     dependencies:
       - target: Core
-    scheme:
-      gatherCoverageData: true
-      testTargets:
-        - name: Core_Tests
-          parallelizable: true
-          randomExecutionOrder: true
+      - framework: XCTest
+      - package: Alamofire
 
   Domain:
     type: framework

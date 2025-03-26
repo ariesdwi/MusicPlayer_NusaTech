@@ -8,7 +8,7 @@
 import Foundation
 import Alamofire
 
-public enum NetworkError: Error {
+public enum NetworkError: Error, Equatable {
     case invalidURL
     case invalidRequest
     case requestFailed(description: String)
@@ -27,4 +27,23 @@ public enum NetworkError: Error {
         default: return .unknown(error)
         }
     }
+
+    public static func == (lhs: NetworkError, rhs: NetworkError) -> Bool {
+        switch (lhs, rhs) {
+        case (.invalidURL, .invalidURL),
+             (.invalidRequest, .invalidRequest):
+            return true
+        case (.requestFailed(let lhsDescription), .requestFailed(let rhsDescription)):
+            return lhsDescription == rhsDescription
+        case (.invalidResponse(let lhsCode), .invalidResponse(let rhsCode)):
+            return lhsCode == rhsCode
+        case (.decodingFailed, .decodingFailed):
+            return true // We don't compare underlying errors directly
+        case (.unknown(let lhsError), .unknown(let rhsError)):
+            return lhsError.localizedDescription == rhsError.localizedDescription
+        default:
+            return false
+        }
+    }
 }
+

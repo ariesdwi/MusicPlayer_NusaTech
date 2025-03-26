@@ -16,15 +16,27 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Description of what the lane does"
-  lane :distribute do
-    # add actions here: https://docs.fastlane.tools/actions
-
-    release = firebase_app_distribution(
-        app: "1:123456789:ios:abcd1234",
-        testers: "ariesdwiprasetiyo4@gmail.com",
-        release_notes: "Lots of amazing new features to test out!"
+  desc "Run Unit Tests"
+  lane :test do
+    scan(
+      scheme: "Core",
+      clean: true,
+      code_coverage: true,
+      output_directory: "fastlane/test_output"
     )
+  end
 
+  desc "Build and distribute via Firebase"
+  lane :deploy do
+    gym(
+      scheme: "App",
+      clean: true
+    )
+    firebase_app_distribution(
+      app: "your_firebase_app_id",
+      testers: "your-email@example.com",
+      release_notes: "New version"
+    )
   end
 end
+

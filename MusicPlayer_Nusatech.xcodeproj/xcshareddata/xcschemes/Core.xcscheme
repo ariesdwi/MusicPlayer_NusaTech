@@ -46,9 +46,9 @@
             testExecutionOrdering = "random">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7E30183971A5E239EBEAFB24"
-               BuildableName = "Core_Tests.xctest"
-               BlueprintName = "Core_Tests"
+               BlueprintIdentifier = "FE0CFAE352462DAD2CDBDBD6"
+               BuildableName = "CoreTests.xctest"
+               BlueprintName = "CoreTests"
                ReferencedContainer = "container:MusicPlayer_Nusatech.xcodeproj">
             </BuildableReference>
          </TestableReference>

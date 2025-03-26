@@ -174,17 +174,15 @@ class SongCell: UITableViewCell {
     private func stopWaveformAnimation() {
         guard isAnimating else { return }
         isAnimating = false
-        
-        // Reset all animations and bar heights
         waveformView.arrangedSubviews.forEach { container in
             guard let bar = container.subviews.first else { return }
-            
             bar.layer.removeAllAnimations()
-            UIView.performWithoutAnimation {
-                bar.constraints.first(where: { $0.firstAttribute == .height })?.constant = 4
-                container.layoutIfNeeded()
-            }
+            let lastHeight = bar.constraints.first(where: { $0.firstAttribute == .height })?.constant ?? 10
+            bar.constraints.first(where: { $0.firstAttribute == .height })?.constant = lastHeight
+            container.layoutIfNeeded()
         }
     }
+
+    
 }
 
