@@ -33,7 +33,7 @@ targets:
       MARKETING_VERSION: 1.3.3
       GENERATE_INFOPLIST_FILE: YES
     dependencies:
-      - target: Core
+      - target: Domain
     entitlements:
       path: app/Debug.entitlements
       properties:
@@ -53,6 +53,7 @@ targets:
   Core:
     type: framework
     platform: iOS
+    deploymentTarget: "15.0"
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: "com.musicplayer.nusatech.core"
       INFOPLIST_FILE: core/Info.plist
@@ -87,4 +88,17 @@ targets:
           parallelizable: true
           randomExecutionOrder: true
 
-  
+  Domain:
+    type: framework
+    platform: iOS
+    deploymentTarget: "15.0"
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: "com.musicplayer.nusatech.domain"
+      INFOPLIST_FILE: domain/Info.plist
+    sources:
+      - path: domain/sources
+        group: domain
+    dependencies:
+      - target: Core
+    scheme:
+      gatherCoverageData: true

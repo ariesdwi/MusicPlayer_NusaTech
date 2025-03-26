@@ -63,12 +63,13 @@ class SongCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(with song: Song) {
-        titleLabel.text = song.title
-        artistLabel.text = song.artist
-        if let artworkURL = song.artworkURL {
+    func configure(with viewModel: SongCellViewModel) {
+        titleLabel.text = viewModel.title
+        artistLabel.text = viewModel.artist
+        if let artworkURL = viewModel.artworkURL {
             artworkImageView.loadImage(from: artworkURL, placeholder: UIImage(systemName: "music.note"))
         }
     }
 }
+
 

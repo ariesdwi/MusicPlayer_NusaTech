@@ -26,6 +26,7 @@ public protocol NetworkService {
 // MARK: - APIClient Implementation
 public final class APIClient: NetworkService {
     private let session: Session
+    public static let shared = APIClient()
     
     public init(session: Session = .default) {
         self.session = session

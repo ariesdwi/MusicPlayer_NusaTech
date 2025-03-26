@@ -48,7 +48,10 @@ extension SongViewController: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "SongCell", for: indexPath) as! SongCell
-        cell.configure(with: viewModel.songs[indexPath.row])
+        let song = viewModel.songs[indexPath.row]
+        let cellViewModel = SongCellViewModel(song: song)
+        cell.configure(with: cellViewModel)
+        
         return cell
     }
 }

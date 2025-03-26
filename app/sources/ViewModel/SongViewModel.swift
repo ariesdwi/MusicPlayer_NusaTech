@@ -8,7 +8,7 @@
 
 import Foundation
 import Combine
-import Core
+import Domain
 
 public final class SongViewModel: ObservableObject {
     // MARK: - Published Properties
@@ -17,44 +17,14 @@ public final class SongViewModel: ObservableObject {
     @Published public private(set) var error: NetworkError?
     
     // MARK: - Dependencies
-    private let networkService: NetworkService
+    private let searchSongsUseCase = SearchSongsUseCase()
     private var cancellables = Set<AnyCancellable>()
     
-    // MARK: - Initialization
-    public init(networkService: NetworkService = APIClient()) {
-        self.networkService = networkService
-    }
-    
-    // MARK: - Public Methods
-    public func searchSongs(query: String, type: EntityType = .song, page: Int? = nil, limit: Int? = 20) {
+    public func searchSongs(query: String) {
         isLoading = true
         error = nil
         
-        let endpoint = MusicAPI.searchSongs(searchTerm: query, type: type, page: page, limit: limit)
-        
-        guard let request = endpoint.urlRequest else {
-            self.isLoading = false
-            self.error = .invalidRequest
-            return
-        }
-        
-        networkService.request(request, responseType: SongResponseDTO.self)
-            .map { response in
-                response.results.compactMap { dto in
-                    guard let previewURL = URL(string: dto.previewUrl ?? ""),
-                          let artworkURL = URL(string: dto.artworkUrl100 ?? "") else {
-                        return nil
-                    }
-                    
-                    return Song(
-                        id: dto.trackId,
-                        title: dto.trackName,
-                        artist: dto.artistName,
-                        previewURL: previewURL,
-                        artworkURL: artworkURL
-                    )
-                }
-            }
+        searchSongsUseCase.execute(query: query)
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
@@ -69,7 +39,6 @@ public final class SongViewModel: ObservableObject {
             )
             .store(in: &cancellables)
     }
-
 
 }
 
