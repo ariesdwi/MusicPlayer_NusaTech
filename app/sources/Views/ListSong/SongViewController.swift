@@ -5,7 +5,6 @@
 //  Created by Aries Prasetyo on 27/02/25.
 //
 
-
 import UIKit
 import Combine
 import AVFoundation
@@ -19,10 +18,24 @@ final class SongViewController: UIViewController {
     private let viewModel: SongViewModel
     private var cancellables = Set<AnyCancellable>()
     private var searchTextSubject = PassthroughSubject<String, Never>()
-
+    
     private var audioPlayer: AVPlayer?
     private var progressTimer: Timer?
-
+    
+    private var currentlyPlayingSongId: String? {
+        didSet {
+            updateAllVisibleCells()
+            updateMiniPlayerVisibility()
+        }
+    }
+    
+    private var isPlaying = false {
+        didSet {
+            updateAllVisibleCells()
+            miniPlayerView.updatePlayStatus(isPlaying: isPlaying)
+        }
+    }
+    
     // MARK: - Init
     init(viewModel: SongViewModel) {
         self.viewModel = viewModel
@@ -39,11 +52,23 @@ final class SongViewController: UIViewController {
         setupUI()
         bindViewModel()
         setupSearchBinding()
+        
+        // Add observer for audio interruptions
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - UI Setup
     private func setupUI() {
-        view.backgroundColor = .white
+        view.backgroundColor = .systemBackground
         title = "Playlist"
         
         navigationController?.navigationBar.prefersLargeTitles = true
@@ -57,6 +82,7 @@ final class SongViewController: UIViewController {
         tableView.register(SongCell.self, forCellReuseIdentifier: SongCell.identifier)
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.separatorInset = UIEdgeInsets(top: 0, left: 78, bottom: 0, right: 16)
         
         tableView.translatesAutoresizingMaskIntoConstraints = false
         miniPlayerView.translatesAutoresizingMaskIntoConstraints = false
@@ -69,10 +95,10 @@ final class SongViewController: UIViewController {
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            miniPlayerView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 26),
-            miniPlayerView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -26),
-            miniPlayerView.heightAnchor.constraint(equalToConstant: 100),
-            miniPlayerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 100) 
+            miniPlayerView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            miniPlayerView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            miniPlayerView.heightAnchor.constraint(equalToConstant: 80), // Updated height
+            miniPlayerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
         
         miniPlayerView.delegate = self
@@ -82,21 +108,28 @@ final class SongViewController: UIViewController {
     private func bindViewModel() {
         viewModel.$songs
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.tableView.reloadData() }
+            .sink { [weak self] _ in
+                self?.tableView.reloadData()
+                // Reset playback if songs changed
+                if self?.currentlyPlayingSongId != nil,
+                   !(self?.viewModel.songs.contains { $0.id == self?.currentlyPlayingSongId } ?? false) {
+                    self?.stopPlayback()
+                }
+            }
             .store(in: &cancellables)
         
         viewModel.$isLoading
             .receive(on: DispatchQueue.main)
             .sink { isLoading in
-                print("Loading: \(isLoading)")
+                // Handle loading state if needed
             }
             .store(in: &cancellables)
         
         viewModel.$error
             .receive(on: DispatchQueue.main)
-            .sink { error in
+            .sink { [weak self] error in
                 if let error = error {
-                    print("Error: \(error.localizedDescription)")
+                    self?.showErrorAlert(error: error)
                 }
             }
             .store(in: &cancellables)
@@ -110,7 +143,8 @@ final class SongViewController: UIViewController {
             .sink { [weak self] query in
                 guard let self = self else { return }
                 if query.isEmpty {
-                    // self.viewModel.songs = []
+                    // Handle empty search query if needed
+                    // self.viewModel.clearSearch() or similar
                 } else {
                     self.viewModel.searchSongs(query: query)
                 }
@@ -118,22 +152,54 @@ final class SongViewController: UIViewController {
             .store(in: &cancellables)
     }
     
-    // MARK: - Play & Stop Music
     
-    private func stopSongPreview() {
-        audioPlayer?.pause()
-        hideMiniPlayer()
+    
+    @objc private func playerDidFinishPlaying() {
+        DispatchQueue.main.async {
+            self.isPlaying = false
+            self.currentlyPlayingSongId = nil
+        }
     }
     
-    private func playSongPreview(url: URL, title: String) {
-        stopSongPreview()
+    @objc private func handleAudioInterruption(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
         
-        audioPlayer = AVPlayer(url: url)
-        audioPlayer?.play()
-        showMiniPlayer(with: title)
-
-        let duration = CMTimeGetSeconds((audioPlayer?.currentItem?.asset.duration) ?? CMTime.zero)
-        startProgressUpdate(duration: duration)
+        switch type {
+        case .began:
+            // Interruption began, pause playback
+            pausePlayback()
+        case .ended:
+            // Interruption ended, try to resume if appropriate
+            if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                if options.contains(.shouldResume) {
+                    audioPlayer?.play()
+                    isPlaying = true
+                }
+            }
+        @unknown default:
+            break
+        }
+    }
+    
+    // MARK: - Progress Tracking
+    private func startProgressUpdate(duration: TimeInterval) {
+        stopProgressUpdate()
+        
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self, let player = self.audioPlayer else { return }
+            
+            let currentTime = player.currentTime().seconds
+            let progress = Float(currentTime / duration)
+            self.miniPlayerView.updateProgress(progress)
+            
+            if progress >= 1.0 {
+                self.stopProgressUpdate()
+                self.playerDidFinishPlaying()
+            }
+        }
     }
     
     private func stopProgressUpdate() {
@@ -141,34 +207,37 @@ final class SongViewController: UIViewController {
         progressTimer = nil
     }
     
-    private func startProgressUpdate(duration: TimeInterval) {
-        stopProgressUpdate()
-        
-        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self, let player = self.audioPlayer else { return }
-            let currentTime = player.currentTime().seconds
-            let progress = Float(currentTime / duration)
-            self.miniPlayerView.updateProgress(progress)
-            
-            if progress >= 1.0 {
-                self.stopSongPreview()
+    // MARK: - UI Updates
+    private func updateAllVisibleCells() {
+        tableView.visibleCells.forEach { cell in
+            if let songCell = cell as? SongCell,
+               let indexPath = tableView.indexPath(for: songCell),
+               indexPath.row < viewModel.songs.count {
+                
+                let song = viewModel.songs[indexPath.row]
+                let shouldAnimate = (song.id == currentlyPlayingSongId) && isPlaying
+                songCell.updatePlayingIndicator(isPlaying: shouldAnimate)
             }
         }
     }
     
-    // MARK: - Mini Player Animations
-    
-    private func showMiniPlayer(with title: String) {
-        miniPlayerView.updateSong(title: title)
-        UIView.animate(withDuration: 0.3) {
-            self.miniPlayerView.transform = CGAffineTransform(translationX: 0, y: -100) // Move up
+    private func updateMiniPlayerVisibility() {
+        if currentlyPlayingSongId != nil {
+            miniPlayerView.showMiniPlayer()
+        } else {
+            miniPlayerView.hideMiniPlayer()
         }
     }
     
-    private func hideMiniPlayer() {
-        UIView.animate(withDuration: 0.3) {
-            self.miniPlayerView.transform = CGAffineTransform(translationX: 0, y: 100) // Move down
-        }
+    // MARK: - Helpers
+    private func showErrorAlert(error: Error) {
+        let alert = UIAlertController(
+            title: "Error",
+            message: error.localizedDescription,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }
 
@@ -181,8 +250,11 @@ extension SongViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: SongCell.identifier, for: indexPath) as! SongCell
         let song = viewModel.songs[indexPath.row]
-        let cellViewModel = SongCellViewModel(song: song)
-        cell.configure(with: cellViewModel, isPlaying: true)
+        let isCurrentlyPlaying = (song.id == currentlyPlayingSongId)
+        
+        cell.configure(with: SongCellViewModel(song: song),
+                       isPlaying: isCurrentlyPlaying && isPlaying)
+        
         return cell
     }
 }
@@ -192,7 +264,24 @@ extension SongViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let song = viewModel.songs[indexPath.row]
         
-        playSongPreview(url: song.previewURL, title: song.title)
+        if song.id == currentlyPlayingSongId {
+            // Toggle play/pause for current song
+            if isPlaying {
+                pausePlayback()
+            } else {
+                isPlaying = true
+                audioPlayer?.play()
+            }
+        } else {
+            // Play new song
+            playSong(song)
+        }
+        
+        tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 72
     }
 }
 
@@ -204,45 +293,70 @@ extension SongViewController: UISearchResultsUpdating {
     }
 }
 
-// MARK: - MiniPlayerNotificationViewDelegate
-extension SongViewController: MiniPlayerViewDelegate {
-    func didNextSong() {
-        guard !viewModel.songs.isEmpty else { return }
+// MARK: - Playback Control Methods
+extension SongViewController {
+    private func playSong(_ song: Song) {
+        audioPlayer?.pause()
+        audioPlayer = AVPlayer(url: song.previewURL)
+        currentlyPlayingSongId = song.id
+        isPlaying = true
+        audioPlayer?.play()
         
-        let currentURL = (audioPlayer?.currentItem?.asset as? AVURLAsset)?.url
-        guard let currentIndex = viewModel.songs.firstIndex(where: { $0.previewURL == currentURL }) else { return }
+        // Update mini player
+        miniPlayerView.updateSong(title: song.title, artist: song.artist, artworkURL: song.artworkURL)
+        miniPlayerView.showMiniPlayer()
         
-        let nextIndex = (currentIndex + 1) % viewModel.songs.count
-        let nextSong = viewModel.songs[nextIndex]
-        
-        playSongPreview(url: nextSong.previewURL, title: nextSong.title)
+        // Setup progress tracking
+        let duration = CMTimeGetSeconds(audioPlayer?.currentItem?.asset.duration ?? CMTime.zero)
+        startProgressUpdate(duration: duration)
     }
-
-    func didPrevSong() {
-        guard !viewModel.songs.isEmpty else { return }
-        
-        let currentURL = (audioPlayer?.currentItem?.asset as? AVURLAsset)?.url
-        guard let currentIndex = viewModel.songs.firstIndex(where: { $0.previewURL == currentURL }) else { return }
-        
-        let prevIndex = (currentIndex - 1 + viewModel.songs.count) % viewModel.songs.count
-        let prevSong = viewModel.songs[prevIndex]
-        
-        playSongPreview(url: prevSong.previewURL, title: prevSong.title)
-    }
-
-
     
-    func didTapPlay() {
-        if let player = audioPlayer {
-            if player.timeControlStatus == .playing {
-                player.pause()
-            } else {
-                player.play()
-            }
+    private func pausePlayback() {
+        audioPlayer?.pause()
+        isPlaying = false
+    }
+    
+    private func stopPlayback() {
+        audioPlayer?.pause()
+        currentlyPlayingSongId = nil
+        isPlaying = false
+    }
+    
+    // Add this method to handle playback resuming
+    private func resumePlayback() {
+        guard currentlyPlayingSongId != nil else { return }
+        isPlaying = true
+        audioPlayer?.play()
+    }
+}
+
+// MARK: - MiniPlayerViewDelegate
+extension SongViewController: MiniPlayerViewDelegate {
+    func didTapPlayPause() {
+        if isPlaying {
+            pausePlayback()
+        } else {
+            resumePlayback() // Now this will work
         }
     }
     
     func didTapStop() {
-        stopSongPreview()
+        stopPlayback()
+    }
+    
+    func didNextSong() {
+        guard !viewModel.songs.isEmpty, let currentId = currentlyPlayingSongId else { return }
+        if let currentIndex = viewModel.songs.firstIndex(where: { $0.id == currentId }) {
+            let nextIndex = (currentIndex + 1) % viewModel.songs.count
+            playSong(viewModel.songs[nextIndex])
+        }
+    }
+    
+    func didPrevSong() {
+        guard !viewModel.songs.isEmpty, let currentId = currentlyPlayingSongId else { return }
+        if let currentIndex = viewModel.songs.firstIndex(where: { $0.id == currentId }) {
+            let prevIndex = (currentIndex - 1 + viewModel.songs.count) % viewModel.songs.count
+            playSong(viewModel.songs[prevIndex])
+        }
     }
 }

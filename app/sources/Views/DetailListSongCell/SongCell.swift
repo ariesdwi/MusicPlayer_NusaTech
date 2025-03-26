@@ -3,13 +3,14 @@
 //  InstagramCloning_Uikit
 //
 //  Created by Aries Prasetyo on 22/03/25.
-//
+//\
 
 import UIKit
 
 class SongCell: UITableViewCell {
     static let identifier = "SongCell"
     
+    // MARK: - UI Components
     private let artworkImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
@@ -47,15 +48,58 @@ class SongCell: UITableViewCell {
         return stack
     }()
     
+    // MARK: - Animation State
+    private var isAnimating = false {
+        didSet {
+            waveformView.isHidden = !isAnimating
+        }
+    }
+    
+    // MARK: - Initialization
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
+        setupViews()
+        createWaveformBars()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        stopWaveformAnimation()
+        artworkImageView.image = nil
+    }
+    
+    // MARK: - Configuration
+    func configure(with viewModel: SongCellViewModel, isPlaying: Bool) {
+        titleLabel.text = viewModel.title
+        artistLabel.text = viewModel.artist
+        
+        if let artworkURL = viewModel.artworkURL {
+            artworkImageView.loadImage(from: artworkURL, placeholder: UIImage(systemName: "music.note"))
+        }
+        
+        updatePlayingIndicator(isPlaying: isPlaying)
+    }
+    
+    func updatePlayingIndicator(isPlaying: Bool) {
+        if isPlaying {
+            startWaveformAnimation()
+        } else {
+            stopWaveformAnimation()
+        }
+    }
+    
+    // MARK: - Private Methods
+    private func setupViews() {
         contentView.addSubview(artworkImageView)
         contentView.addSubview(titleLabel)
         contentView.addSubview(artistLabel)
         contentView.addSubview(waveformView)
         
         NSLayoutConstraint.activate([
-            
             artworkImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             artworkImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             artworkImageView.widthAnchor.constraint(equalToConstant: 50),
@@ -70,75 +114,76 @@ class SongCell: UITableViewCell {
             artistLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
             artistLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12),
             
-            // 🔵 Playing Indicator Position
             waveformView.widthAnchor.constraint(equalToConstant: 40),
             waveformView.heightAnchor.constraint(equalToConstant: 20),
             waveformView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             waveformView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor)
-            
         ])
-        
-        createWaveformBars()
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    func configure(with viewModel: SongCellViewModel, isPlaying: Bool) {
-        titleLabel.text = viewModel.title
-        artistLabel.text = viewModel.artist
-        if let artworkURL = viewModel.artworkURL {
-            artworkImageView.loadImage(from: artworkURL, placeholder: UIImage(systemName: "music.note"))
-        }
-        
-        updatePlayingIndicator(isPlaying: isPlaying)
-    }
-    
-     func updatePlayingIndicator(isPlaying: Bool) {
-        waveformView.isHidden = !isPlaying
-        if isPlaying {
-            startWaveformAnimation()
-        } else {
-            stopWaveformAnimation()
-        }
     }
     
     private func createWaveformBars() {
-        // Clear existing bars
         waveformView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
-        // Add 5 bars with random heights (will be animated)
         for _ in 0..<5 {
+            let container = UIView()
+            container.translatesAutoresizingMaskIntoConstraints = false
+            
             let bar = UIView()
             bar.backgroundColor = .systemGreen
-            bar.layer.cornerRadius = 2
-            waveformView.addArrangedSubview(bar)
+            bar.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(bar)
             
-            // Set initial height (will be animated)
-            let heightConstraint = bar.heightAnchor.constraint(equalToConstant: 4)
-            heightConstraint.isActive = true
+            // Critical constraints:
+            NSLayoutConstraint.activate([
+                container.widthAnchor.constraint(equalToConstant: 4),
+                
+                // Bar constraints
+                bar.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                bar.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                bar.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+                bar.heightAnchor.constraint(equalToConstant: 4) // Initial height
+            ])
+            
+            waveformView.addArrangedSubview(container)
         }
     }
     
     private func startWaveformAnimation() {
-        // Animate each bar with a different timing to create wave effect
-        for (index, bar) in waveformView.arrangedSubviews.enumerated() {
-            let delay = Double(index) * 0.15
+        guard !isAnimating else { return }
+        isAnimating = true
+        
+        // Animate each bar with different timing
+        for (index, container) in waveformView.arrangedSubviews.enumerated() {
+            guard let bar = container.subviews.first else { continue }
             
-            UIView.animate(withDuration: 0.5, delay: delay, options: [.repeat, .autoreverse], animations: {
-                bar.constraints.first?.constant = CGFloat.random(in: 4...20)
-                bar.layoutIfNeeded()
-            }, completion: nil)
+            let delay = Double(index) * 0.15
+            let newHeight = CGFloat.random(in: 8...20)
+            
+            UIView.animate(
+                withDuration: 0.5,
+                delay: delay,
+                options: [.repeat, .autoreverse, .curveEaseInOut],
+                animations: {
+                    bar.constraints.first(where: { $0.firstAttribute == .height })?.constant = newHeight
+                    container.layoutIfNeeded()
+                }
+            )
         }
     }
     
     private func stopWaveformAnimation() {
+        guard isAnimating else { return }
+        isAnimating = false
+        
         // Reset all animations and bar heights
-        waveformView.arrangedSubviews.forEach { bar in
+        waveformView.arrangedSubviews.forEach { container in
+            guard let bar = container.subviews.first else { return }
+            
             bar.layer.removeAllAnimations()
-            bar.constraints.first?.constant = 4
-            bar.layoutIfNeeded()
+            UIView.performWithoutAnimation {
+                bar.constraints.first(where: { $0.firstAttribute == .height })?.constant = 4
+                container.layoutIfNeeded()
+            }
         }
     }
 }
