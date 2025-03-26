@@ -17,9 +17,15 @@ public final class SongViewModel: ObservableObject {
     @Published public private(set) var error: NetworkError?
     
     // MARK: - Dependencies
-    private let searchSongsUseCase = SearchSongsUseCase()
+    private let searchSongsUseCase: SearchSongsUseCase
     private var cancellables = Set<AnyCancellable>()
     
+    // MARK: - Initializer
+    public init(searchSongsUseCase: SearchSongsUseCase) {
+        self.searchSongsUseCase = searchSongsUseCase
+    }
+    
+    // MARK: - Methods
     public func searchSongs(query: String) {
         isLoading = true
         error = nil
@@ -39,7 +45,6 @@ public final class SongViewModel: ObservableObject {
             )
             .store(in: &cancellables)
     }
-
 }
 
 

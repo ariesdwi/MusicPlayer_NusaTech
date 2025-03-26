@@ -5,29 +5,22 @@
 //  Created by Aries Prasetyo on 25/03/25.
 //
 
-//
-//  APIClient.swift
-//  MusicPlayer_Nusatech
-//
-//  Created by Aries Prasetyo on 25/03/25.
-//
-
 import Alamofire
 import Combine
 import Foundation
 
-
-// MARK: - Networking Abstraction (DIP)
+// MARK: - NetworkService Protocol
 public protocol NetworkService {
-    func request<T: Decodable>(_ urlRequest: URLRequest, responseType: T.Type) -> AnyPublisher<T, NetworkError>
+    func request<T: Decodable>(
+        _ urlRequest: URLRequest,
+        responseType: T.Type
+    ) -> AnyPublisher<T, NetworkError>
 }
-
 
 // MARK: - APIClient Implementation
 public final class APIClient: NetworkService {
     private let session: Session
-    public static let shared = APIClient()
-    
+
     public init(session: Session = .default) {
         self.session = session
     }
@@ -49,6 +42,7 @@ public final class APIClient: NetworkService {
             .eraseToAnyPublisher()
     }
 }
+
 
 
 // MARK: - Network Error Mapping (SRP)

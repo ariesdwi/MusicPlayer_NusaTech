@@ -10,8 +10,12 @@ import Core
 import Foundation
 
 public final class SearchSongsUseCase {
-    public init() {}
-    
+    private let networkService: NetworkService
+
+    public init(networkService: NetworkService) {
+        self.networkService = networkService
+    }
+
     public func execute(query: String, type: EntityType = .song, page: Int? = nil, limit: Int? = 20) -> AnyPublisher<[Song], NetworkError> {
         
         let endpoint = MusicAPI.searchSongs(searchTerm: query, type: type, page: page, limit: limit)
@@ -20,7 +24,7 @@ public final class SearchSongsUseCase {
             return Fail(error: .invalidRequest).eraseToAnyPublisher()
         }
         
-        return APIClient.shared.request(request, responseType: SongResponseDTO.self)
+        return networkService.request(request, responseType: SongResponseDTO.self)
             .map { dto in
                 dto.results.compactMap { result in
                     guard let previewURL = URL(string: result.previewUrl ?? ""),
@@ -40,5 +44,6 @@ public final class SearchSongsUseCase {
             .eraseToAnyPublisher()
     }
 }
+
 
 
