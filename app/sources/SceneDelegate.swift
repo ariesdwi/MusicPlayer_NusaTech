@@ -12,22 +12,22 @@ import Domain
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
-    private let dependencyContainer = DependencyContainer()
-
+    
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         
         guard let windowScene = (scene as? UIWindowScene) else { return }
-
         
-        // Initialize the first screen with dependency injection
-        let songVC = SongViewController(viewModel: dependencyContainer.songViewModel)
+        let apiClient = APIClient()
+        let searchSongsUseCase = SearchSongsUseCase(networkService: apiClient)
+        let songViewModel = SongViewModel(searchSongsUseCase: searchSongsUseCase)
+        let songVC = SongViewController(viewModel: songViewModel)
+        
         let navController = UINavigationController(rootViewController: songVC)
-       
         
         window = UIWindow(windowScene: windowScene)
         window?.rootViewController = navController
         window?.makeKeyAndVisible()
-
+        
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

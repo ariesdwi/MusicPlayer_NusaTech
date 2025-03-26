@@ -33,7 +33,7 @@ public final class SearchSongsUseCase {
                     }
                     
                     return Song(
-                        id: result.trackId,
+                        id: String(result.trackId),
                         title: result.trackName,
                         artist: result.artistName,
                         previewURL: previewURL,

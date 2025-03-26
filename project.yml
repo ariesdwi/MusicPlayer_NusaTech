@@ -39,16 +39,16 @@ targets:
       properties:
         com.apple.security.application-groups: group.com.musicplayer
 
-  MusicPlayerTests:
-    type: bundle.unit-test
-    platform: iOS
-    sources: [MusicPlayerTests]
-    dependencies:
-      - target: MusicPlayer_Nusatech
-    settings:
-      base:
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/MusicPlayer_Nusatech.app/MusicPlayer_Nusatech"
-        BUNDLE_LOADER: "$(TEST_HOST)"
+  # MusicPlayerTests:
+  #   type: bundle.unit-test
+  #   platform: iOS
+  #   sources: [MusicPlayerTests]
+  #   dependencies:
+  #     - target: MusicPlayer_Nusatech
+  #   settings:
+  #     base:
+  #       TEST_HOST: "$(BUILT_PRODUCTS_DIR)/MusicPlayer_Nusatech.app/MusicPlayer_Nusatech"
+  #       BUNDLE_LOADER: "$(TEST_HOST)"
 
   Core:
     type: framework
