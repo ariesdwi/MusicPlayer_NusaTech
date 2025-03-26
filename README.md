@@ -11,6 +11,7 @@ This is a simple music player app built using Swift and following the MVVM archi
 - CI/CD setup (currently up to GitHub, not yet integrated with AppCenter/TestFlight)
 - Uses **XcodeGen** for project generation
 - Includes a **Makefile** for simplified project management
+- Unit testing implemented in the Core module
 
 ## Project Structure
 ```
