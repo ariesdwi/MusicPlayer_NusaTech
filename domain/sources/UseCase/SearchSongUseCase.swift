@@ -27,17 +27,12 @@ public final class SearchSongsUseCase {
         return networkService.request(request, responseType: SongResponseDTO.self)
             .map { dto in
                 dto.results.compactMap { result in
-                    guard let previewURL = URL(string: result.previewUrl ?? ""),
-                          let artworkURL = URL(string: result.artworkUrl100 ?? "") else {
-                        return nil
-                    }
-                    
-                    return Song(
+                    Song(
                         id: String(result.trackId),
                         title: result.trackName,
                         artist: result.artistName,
-                        previewURL: previewURL,
-                        artworkURL: artworkURL
+                        previewURL: result.previewUrl ?? "",
+                        artworkURL: result.artworkUrl100 ?? ""
                     )
                 }
             }

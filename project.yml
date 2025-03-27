@@ -81,7 +81,7 @@ targets:
         group: core
     dependencies:
       - target: Core
-      - framework: XCTest
+      - sdk: XCTest.framework 
       - package: Alamofire
 
   Domain:
@@ -98,3 +98,19 @@ targets:
       - target: Core
     scheme:
       gatherCoverageData: true
+      testTargets:
+        - name: DomainTests
+          parallelizable: true
+          randomExecutionOrder: true
+
+  DomainTests:
+    type: bundle.unit-test
+    platform: iOS
+    settings:
+      INFOPLIST_FILE: domain/DomainTests-Info.plist
+    sources:
+      - path: domain/Tests
+        group: domain
+    dependencies:
+      - target: Domain
+      - sdk: XCTest.framework 
