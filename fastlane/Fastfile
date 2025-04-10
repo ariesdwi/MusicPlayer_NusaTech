@@ -24,6 +24,20 @@ platform :ios do
       code_coverage: true,
       output_directory: "fastlane/test_output"
     )
+
+    scan(
+      scheme: "Domain",
+      clean: true,
+      code_coverage: true,
+      output_directory: "fastlane/test_output"
+    )
+
+    scan(
+      scheme: "MusicPlayer_Nusatech",
+      clean: true,
+      code_coverage: true,
+      output_directory: "fastlane/test_output"
+    )
   end
 
   desc "Build and distribute via Firebase"
@@ -39,4 +53,5 @@ platform :ios do
     )
   end
 end
+
 

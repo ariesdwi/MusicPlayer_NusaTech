@@ -199,6 +199,7 @@ final class SongViewController: UIViewController {
                 self.stopProgressUpdate()
                 self.playerDidFinishPlaying()
             }
+            
         }
     }
     
@@ -239,6 +240,7 @@ final class SongViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+    
 }
 
 // MARK: - UITableViewDataSource
@@ -252,8 +254,10 @@ extension SongViewController: UITableViewDataSource {
         let song = viewModel.songs[indexPath.row]
         let isCurrentlyPlaying = (song.id == currentlyPlayingSongId)
         
-        cell.configure(with: SongCellViewModel(song: song),
-                       isPlaying: isCurrentlyPlaying && isPlaying)
+        cell.configure(
+            with: SongCellViewModel(song: song),
+            isPlaying: isCurrentlyPlaying && isPlaying
+        )
         
         return cell
     }
